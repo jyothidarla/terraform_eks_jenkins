@@ -1,0 +1,51 @@
+provider "aws" {
+  region = "ap-southeast-2"
+}
+
+resource "aws_key_pair" "abc" {
+  key_name   = "hello"
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
+resource "aws_security_group" "example_sg_instance" {
+  name        = "mysg"
+  description = "Allow all traffic"
+  vpc_id      = "vpc-01594c119cd4e0be3"  # Replace with your VPC ID
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow all sources
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow all destinations
+  }
+}
+
+resource "aws_instance" "example" {
+  ami                    = "ami-058face4ac718403d"  # Replace with your AMI ID
+  instance_type          = "t2.micro"
+  key_name               = aws_key_pair.abc.key_name  # Use the key_name attribute
+  vpc_security_group_ids = [aws_security_group.example_sg_instance.id]  # Use the correct attribute
+
+  tags = {
+    Name = "hello-instance"
+  }
+
+  provisioner "file" {
+    source      = "file.txt"
+    destination = "/tmp/remote_file.txt"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ec2-user"
+    private_key = file("~/.ssh/id_rsa")
+    host        = self.public_ip
+  }
+}
